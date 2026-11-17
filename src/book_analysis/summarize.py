@@ -117,7 +117,7 @@ def main():
 
     with open(book_list) as f:
         lines = [line.strip() for line in f if line.strip()]
-    paths = [line for line in lines if line != "file path"]
+    paths = line[1:]
 
     if not 1 <= task_id <= len(paths):
         logging.error(
@@ -147,6 +147,7 @@ def main():
         time.time() - start,
         socket.gethostname(),
     )
+
 
 if __name__ == "__main__":
     main()
