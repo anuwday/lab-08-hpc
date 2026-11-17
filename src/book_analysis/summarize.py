@@ -63,16 +63,90 @@ def summarize_book(text):
 
 
 def upload_summary(key, summary, genre, job):
-    """Add the summary and genre to the document with _id key in gutenberg.books, and add a run."""
-    # TODO: Part 1, Step 1 of README.md
-    raise NotImplementedError("upload_summary")
+    """Add the summary and genre to the document with _id key in gutenberg.books."""
+    client = MongoClient(
+        os.environ["MONGODB_ATLAS_URL"],
+        username=os.environ["MONGODB_ATLAS_USER"],
+        password=os.environ["MONGODB_ATLAS_PWD"],
+    )
+    try:
+        now = datetime.now(timezone.utc)
+        result = client.gutenberg.books.update_one(
+            {"_id": key},
+            {
+                "$set": {
+                    "llm_analysis": {
+                        "summary": summary,
+                        "genre": genre,
+                        "model": MODEL,
+                        "at": now,
+                    }
+                },
+                "$push": {
+                    "runs": {
+                        "host": socket.gethostname(),
+                        "at": now,
+                        "job": job,
+                    }
+                },
+            },
+        )
+    except PyMongoError as e:
+        logging.error("Couldn't update %s in MongoDB: %s", key, e)
+        raise
+    finally:
+        client.close()
+    if result.matched_count == 0:
+        logging.warning("No document with _id %s in gutenberg.books", key)
 
 
 def main():
     """Summarize book number TASK_ID of BOOK_LIST and save the result in MongoDB."""
-    # TODO: Part 1, Step 1 of README.md
-    raise NotImplementedError("main")
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
+    usage = "Summarize a book: summarize.py BOOK_LIST TASK_ID"
+    if len(sys.argv) != 3:
+        logging.error(usage)
+        sys.exit(1)
+    book_list = sys.argv[1]
+    try:
+        task_id = int(sys.argv[2])
+    except ValueError:
+        logging.error(usage)
+        sys.exit(1)
+
+    with open(book_list) as f:
+        lines = [line.strip() for line in f if line.strip()]
+    paths = [line for line in lines if line != "file path"]
+
+    if not 1 <= task_id <= len(paths):
+        logging.error(
+            "TASK_ID %d is too large or too small: it must be between 1 and %d",
+            task_id,
+            len(paths),
+        )
+        sys.exit(1)
+
+    path = paths[task_id - 1]
+    key = path.split("/")[-1]
+
+    array_job = os.environ.get("SLURM_ARRAY_JOB_ID")
+    array_task = os.environ.get("SLURM_ARRAY_TASK_ID")
+    job = f"{array_job}_{array_task}" if array_job and array_task else None
+
+    logging.info("Task %d: %s", task_id, path)
+    start = time.time()
+    text = read_book(path)
+    summary, genre = summarize_book(text)
+    logging.info("%s: %s, %.1f s", key, genre, time.time() - start)
+
+    upload_summary(key, summary, genre, job)
+    logging.info(
+        "Summarized %s in %.1f s on %s",
+        key,
+        time.time() - start,
+        socket.gethostname(),
+    )
 
 if __name__ == "__main__":
     main()
