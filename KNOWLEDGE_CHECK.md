@@ -12,7 +12,9 @@ Redirect the command's output to `results/job-history.txt` and include the file 
 
 **Your answer:** Provide the entire command you used, including all CLI options.
 
-sacct -S 2026-11-04 -X --format=JobID, JobName, NodeList, Partition, Account, User, State Start,Elapsed > results/job-history.txt
+sacct -S 2026-11-04 -X --
+format=JobID,JobName,NodeList,Partition,Account,User,State,Start,Elapsed > 
+results/job-history.txt
 
 ## 2. Slurm: did every array task run at the same time?
 
@@ -24,7 +26,7 @@ You submitted your entire job array with one `sbatch` command, but Slurm schedul
 
 **Your answer:** Did all tasks in the array start at the same time? Was the elapsed time identical for every task? Explain why or why not.
 
-In 22858000, the tasks didn't start at the same time, and there were gaps between tims. Elapsed times weren't completely the same. Due to the GPU being shared with others, I think there is traffic that causes these differences. There was gaps like 57 to 58 minutes and so on, which is also affected by how the books aren't all the same size as each other.
+In 22858000, the tasks didn't start at the same time, and there were gaps between times as each were in groups of 7-8 (approx). Elapsed times weren't completely the same. Due to the GPU being shared with others, I think there is traffic that causes these differences. The next group of times would start a minute later, and so on. These results are affected by how the books aren't all the same size as each other. 
 
 ## 3. Slurm: did my job use what it asked for?
 
@@ -36,5 +38,5 @@ Suppose your next job array has 1,000 books instead of 101. Before you submit it
 
 **Your answer:** How much memory and time did the task use, compared with what your script asked for? What would you change in your script, and why?
 
-
+The task used 1.33 GB (memory utilized) so memory was over-requested compared to the 16 GB in summarize.slurm. The wall-clock time is 16seconds, meaning the 5-minute time limit was beyond needed. The script asks more than used. If I were to use an array of 1,000 books instead of 101, I might drop the memory to 10GB or 8GB, but still above 1.33 GB. For time, I might shorten it to 3minutes in order to leave room for possible loading/big book. The reason for these choices is because over-requesting can waste resources in the cluster and add to the wait time. However, requesting for too little will have worse consequences, so a safe range is the best option. 
 
